@@ -235,7 +235,7 @@ class HeroLauncher {
                     event_callback);
 
     void (*DrawUi)(HeroLauncher*) = [](HeroLauncher* hero) { hero->DrawUI(); };
-    ui_timer_handle_ = LibXR::Timer::CreateTask(DrawUi, this, 125);
+    ui_timer_handle_ = LibXR::Timer::CreateTask(DrawUi, this, 47);
     LibXR::Timer::Add(ui_timer_handle_);
     LibXR::Timer::Start(ui_timer_handle_);
   }
@@ -526,6 +526,11 @@ class HeroLauncher {
     delay_time_ = 0;
 
     soft_start_finish_ = false;
+
+    for (int i = 0; i < FRIC_NUM; i++) {
+      fric_motor_[i]->Relax();
+    }
+    motor_trig_->Relax();
   }
 
   /**
@@ -775,7 +780,7 @@ class HeroLauncher {
 
     // 首次绘制使用ADD，后续使用MODIFY
     Referee::UIFigureOp ADD_OP = Referee::UIFigureOp::UI_OP_MODIFY;
-    if (this->ui_tick_ % 4 == 0) {
+    if (this->ui_tick_ % 5 == 0) {
       ADD_OP = Referee::UIFigureOp::UI_OP_ADD;
     }
 
@@ -797,8 +802,8 @@ class HeroLauncher {
     float trig_pos =
         LibXR::CycleValue<float>(-this->trig_angle_) / 6.2832f * 360.0f;
     uint16_t arc_mid = static_cast<uint16_t>(trig_pos);
-    uint16_t arc_start = static_cast<uint16_t>((arc_mid + 345) % 360);
-    uint16_t arc_end = static_cast<uint16_t>((arc_mid + 15) % 360);
+    uint16_t arc_start = static_cast<uint16_t>((arc_mid + 330) % 360);
+    uint16_t arc_end = static_cast<uint16_t>((arc_mid + 30) % 360);
     if (arc_start >= arc_end) arc_end += 360;
 
     // 拨弹盘颜色：根据模式判断（校准模式为橙色，其他为青色）
@@ -810,22 +815,23 @@ class HeroLauncher {
         // 绘制前摩擦轮状态
         Referee::UIFigure2 fig_front{};
         ref_->FillCircle(fig_front.interaction_figure[0], "lfl", ADD_OP,
-                         UI_HERO_LAUNCHER_LAYER, fric_color_0, 5, 1650, 600,
+                         UI_HERO_LAUNCHER_LAYER, fric_color_0, 4, 1600, 820,
                          25);
         ref_->FillCircle(fig_front.interaction_figure[1], "lfr", ADD_OP,
-                         UI_HERO_LAUNCHER_LAYER, fric_color_1, 5, 1750, 600,
+                         UI_HERO_LAUNCHER_LAYER, fric_color_1, 4, 1680, 820,
                          25);
         ref_->SendUIFigure2(robot_id, client_id, fig_front);
+        this->ui_tick_ += 1;
         break;
       }
       case 1: {
         // 绘制后摩擦轮状态
         Referee::UIFigure2 fig_back{};
         ref_->FillCircle(fig_back.interaction_figure[0], "lbl", ADD_OP,
-                         UI_HERO_LAUNCHER_LAYER, fric_color_2, 5, 1650, 670,
+                         UI_HERO_LAUNCHER_LAYER, fric_color_2, 4, 1600, 750,
                          25);
         ref_->FillCircle(fig_back.interaction_figure[1], "lbr", ADD_OP,
-                         UI_HERO_LAUNCHER_LAYER, fric_color_3, 5, 1750, 670,
+                         UI_HERO_LAUNCHER_LAYER, fric_color_3, 4, 1680, 750,
                          25);
         ref_->SendUIFigure2(robot_id, client_id, fig_back);
         break;
@@ -834,31 +840,31 @@ class HeroLauncher {
         // 绘制拨弹盘位置
         Referee::UIFigure fig_trig{};
         ref_->FillArc(fig_trig, "lta", ADD_OP, UI_HERO_LAUNCHER_LAYER,
-                      trig_color, 4, 1700, 400, arc_start, arc_end, 80, 80);
+                      trig_color, 3, 1640, 640, arc_start, arc_end, 80, 80);
         ref_->SendUIFigure(robot_id, client_id, fig_trig);
-        this->ui_tick_ += 1;
         break;
       }
-        // case 3: //{
-        //   // 显示卡弹警告
-        //   if (stuck) {
-        //     Referee::UICharacter char_fig{};
-        //     ref_->FillCharacter(char_fig, "lstk", ADD_OP, UI_LAUNCHER_LAYER,
-        //                         Referee::UIColor::UI_COLOR_YELLOW, 24, 2,
-        //                         1600, 300, "MAN! It is stuck!!");
-        //     ref_->SendUICharacter(robot_id, client_id, char_fig);
-        //   } else {
-        //     // 清除卡弹警告文本
-        //     Referee::UICharacter char_fig{};
-        //     ref_->FillCharacter(char_fig, "lstk", ADD_OP, UI_LAUNCHER_LAYER,
-        //                         Referee::UIColor::UI_COLOR_BLACK, 24, 2,
-        //                         1600, 300, "");
-        //     ref_->SendUICharacter(robot_id, client_id, char_fig);
-        //   }
+      case 3: {
+        // 竖直画线 - 主瞄准线
+        Referee::UIFigure fig_line{};
+        ref_->FillLine(fig_line, "ctrln", ADD_OP, UI_HERO_LAUNCHER_LAYER,
+                       Referee::UIColor::UI_COLOR_WHITE, 2, 960, 150, 960, 900);
+        ref_->SendUIFigure(robot_id, client_id, fig_line);
+        break;
+      }
+      case 4: {
+        // 水平瞄准线 - 下方第一条
+
+        Referee::UIFigure fig_bot2{};
+        ref_->FillLine(fig_bot2, "hlb1", ADD_OP, UI_HERO_LAUNCHER_LAYER,
+                       Referee::UIColor::UI_COLOR_WHITE, 2, 940, 300, 980, 300);
+        ref_->SendUIFigure(robot_id, client_id, fig_bot2);
+
+        break;
+      }
       default:
         break;
-        //}
     }
-    this->ui_step_ = (this->ui_step_ + 1) % 3;
+    this->ui_step_ = (this->ui_step_ + 1) % 5;  // 更新为7个case (0-6)
   }
 };
